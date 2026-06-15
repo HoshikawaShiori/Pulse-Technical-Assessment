@@ -46,7 +46,7 @@ export default function WorldMap({
 
   function getMapStyle(t: string): string {
     return t === "light"
-      ? "mapbox://styles/mapbox/light-v11"
+      ? "mapbox://styles/jprofeta/cmqf56s6b009m01sm39le8uvp"
       : "mapbox://styles/mapbox/dark-v11";
   }
 
