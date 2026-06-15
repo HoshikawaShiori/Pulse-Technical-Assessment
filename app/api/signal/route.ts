@@ -1,7 +1,6 @@
 import type { NextRequest } from "next/server";
 import { prisma } from "@/lib/prisma";
 import type { SignalType } from "@/lib/types";
-import { requireAuth } from "@/lib/api-auth";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -22,9 +21,6 @@ const MAX_PAYLOAD = 64 * 1024; // SDP/ICE are small; cap to be safe.
 // Drops one message into the recipient's mailbox. Also manages the `busy`
 // flag so a user can only be in one connection at a time.
 export async function POST(request: NextRequest) {
-  const auth = await requireAuth();
-  if (auth instanceof Response) return auth;
-
   let body: unknown;
   try {
     body = await request.json();
@@ -37,18 +33,30 @@ export async function POST(request: NextRequest) {
     unknown
   >;
 
+  // Basic sanity: no self-signals
+  if (fromId === toId) {
+    return Response.json({ error: "invalid ids" }, { status: 400 });
+  }
+
+  // Sender must have joined presence
+  const sender = await prisma.presence.findUnique({ where: { id: fromId } });
+  if (!sender) {
+    return Response.json({ error: "forbidden" }, { status: 403 });
+  }
+
   if (typeof fromId !== "string" || typeof toId !== "string") {
     return Response.json({ error: "invalid ids" }, { status: 400 });
   }
   if (typeof type !== "string" || !VALID_TYPES.includes(type as SignalType)) {
     return Response.json({ error: "invalid type" }, { status: 400 });
   }
-  if (
-    payload !== undefined &&
-    payload !== null &&
-    (typeof payload !== "string" || payload.length > MAX_PAYLOAD)
-  ) {
-    return Response.json({ error: "invalid payload" }, { status: 400 });
+  if (payload !== undefined && payload !== null) {
+    if (typeof payload !== "string") {
+      return Response.json({ error: "invalid payload" }, { status: 400 });
+    }
+    if (payload.length > MAX_PAYLOAD) {
+      return Response.json({ error: "invalid payload" }, { status: 400 });
+    }
   }
 
   const signalType = type as SignalType;
@@ -57,8 +65,13 @@ export async function POST(request: NextRequest) {
   // Enforce "one active connection at a time": if the target is already busy,
   // auto-decline the request instead of delivering it.
   if (signalType === "request") {
-    const target = await prisma.presence.findUnique({
-      where: { id: toId },
+    // Treat a target with a stale heartbeat as offline so we don't auto-decline
+    // against a peer that appears busy but is actually gone.
+    const { STALE_MS } = await import("@/lib/presence");
+    const staleCutoff = new Date(Date.now() - STALE_MS);
+
+    const target = await prisma.presence.findFirst({
+      where: { id: toId, lastSeen: { gte: staleCutoff } },
       select: { busy: true },
     });
     if (!target) {

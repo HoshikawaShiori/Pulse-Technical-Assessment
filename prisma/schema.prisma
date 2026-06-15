@@ -32,12 +32,14 @@ model Session {
 
 model Presence {
   id       String   @id // client-generated session uuid
+  userId   String?  // optional authenticated user id for this session
   lat      Float // ALREADY privacy-offset coords (raw is never stored)
   lng      Float
   busy     Boolean  @default(false) // true while in an active connection
   lastSeen DateTime
 
   @@index([lastSeen])
+  @@index([userId])
 }
 
 model Signal {

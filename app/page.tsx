@@ -26,7 +26,18 @@ const REQUEST_TIMEOUT_MS = 30_000;
 
 export default function Home() {
   const [phase, setPhase] = useState<"gate" | "live">("gate");
-  const [sessionId] = useState(() => crypto.randomUUID());
+  const [sessionId] = useState(() => {
+    try {
+      const key = "pulse:sessionId";
+      const stored = localStorage.getItem(key);
+      if (stored) return stored;
+      const id = crypto.randomUUID();
+      localStorage.setItem(key, id);
+      return id;
+    } catch {
+      return crypto.randomUUID();
+    }
+  });
   const [peers, setPeers] = useState<PeerDot[]>([]);
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [notice, setNotice] = useState<string | null>(null);
@@ -64,9 +75,16 @@ export default function Home() {
   const [cameraOn, setCameraOn] = useState(true);
   const [audioOn, setAudioOn] = useState(true);
 
-  // Persist sent message to the server
+  // Persist sent message to the server. Compute pairId dynamically to avoid stale references.
   const persistMessage = useCallback(async (text: string) => {
-    const pid = pairIdRef.current;
+    // Prefer explicit pairIdRef, otherwise derive from current connection state.
+    let pid = pairIdRef.current;
+    if (!pid) {
+      const c = connRef.current;
+      if (c.kind === "connecting" || c.kind === "connected") {
+        pid = makePairId(sessionId, c.peerId);
+      }
+    }
     if (!pid) return;
     try {
       await fetch("/api/chat/send", {
@@ -79,7 +97,7 @@ export default function Home() {
 
   async function loadHistory(pairId: string) {
     try {
-      const res = await fetch(`/api/chat/history?pairId=${encodeURIComponent(pairId)}`, { cache: "no-store" });
+      const res = await fetch(`/api/chat/history?pairId=${encodeURIComponent(pairId)}&sessionId=${encodeURIComponent(sessionId)}`, { cache: "no-store" });
       if (!res.ok) return;
       const data = await res.json();
       if (!data.messages?.length) return;
@@ -177,6 +195,9 @@ export default function Home() {
 
   function requestConnection(peerId: string) {
     if (connRef.current.kind !== "idle") return;
+    // Precompute pairId for this attempted connection so subsequent sends use the
+    // correct conversation key even before the other side accepts.
+    pairIdRef.current = makePairId(sessionId, peerId);
     setConn({ kind: "requesting", peerId });
     void sendSignal(sessionId, peerId, "request", user?.name ?? "Anonymous");
     requestTimer.current = setTimeout(() => {
@@ -391,11 +412,11 @@ export default function Home() {
       .catch(() => {});
   }, []);
 
-  async function handleReady(lat: number, lng: number) {
-    setMyLocation({ lat, lng });
-    await join(sessionId, lat, lng);
-    setPhase("live");
-  }
+   async function handleReady(lat: number, lng: number) {
+     setMyLocation({ lat, lng });
+     await join(sessionId, lat, lng, user?.id);
+     setPhase("live");
+   }
 
   async function handleLogout() {
     await fetch("/api/auth/logout", { method: "POST" });

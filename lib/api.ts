@@ -5,11 +5,14 @@ export async function join(
   id: string,
   lat: number,
   lng: number,
+  userId?: string,
 ): Promise<void> {
+  const body: Record<string, unknown> = { id, lat, lng };
+  if (userId) body.userId = userId;
   await fetch("/api/join", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ id, lat, lng }),
+    body: JSON.stringify(body),
   });
 }
 

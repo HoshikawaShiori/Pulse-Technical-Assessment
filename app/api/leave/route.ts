@@ -11,6 +11,7 @@ export const dynamic = "force-dynamic";
 export async function POST(request: NextRequest) {
   const auth = await requireAuth();
   if (auth instanceof Response) return auth;
+  const authPayload = auth as { userId: string; sessionId: string } | null;
   let id: string | undefined;
   try {
     const text = await request.text();
@@ -18,17 +19,22 @@ export async function POST(request: NextRequest) {
   } catch {
     id = undefined;
   }
-
+ 
   if (typeof id !== "string" || !id) {
     return Response.json({ error: "invalid id" }, { status: 400 });
   }
 
+  // Only allow callers to remove their own presence
+  if (!authPayload || authPayload.sessionId !== id) {
+    return Response.json({ error: "forbidden" }, { status: 403 });
+  }
+ 
   // Independent cleanup deletes — no atomicity needed (and interactive
   // transactions are unreliable over a PgBouncer pooler).
   await prisma.signal.deleteMany({
     where: { OR: [{ toId: id }, { fromId: id }] },
   });
   await prisma.presence.deleteMany({ where: { id } });
-
+ 
   return Response.json({ ok: true });
 }
