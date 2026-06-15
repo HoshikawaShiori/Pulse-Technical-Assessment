@@ -2,8 +2,9 @@
 
 import { useEffect, useRef, useState } from "react";
 import "mapbox-gl/dist/mapbox-gl.css";
-import type { Map as MapboxMap, Marker } from "mapbox-gl";
+import type { Map as MapboxMap, Marker, Style } from "mapbox-gl";
 import type { PeerDot } from "@/lib/types";
+import { useTheme } from "@/lib/theme-context";
 
 const TOKEN = process.env.NEXT_PUBLIC_MAPBOX_TOKEN ?? "pk.eyJ1IjoicHVsc2UtbWFwIiwiYSI6ImNrMDBkZW1vMDAwMDAwMDAifQ.AAAAAAAAAAAAAAAAAAAAAA";
 
@@ -31,6 +32,9 @@ export default function WorldMap({
   const markersRef = useRef<Map<string, Marker>>(new Map());
   const meMarkerRef = useRef<Marker | null>(null);
   const [ready, setReady] = useState(false);
+  const { theme } = useTheme();
+  const themeRef = useRef(theme);
+  useEffect(() => { themeRef.current = theme; });
 
   // Marker click handlers are bound once, so read the live click handler +
   // connectability through refs (synced in an effect, never during render).
@@ -40,6 +44,13 @@ export default function WorldMap({
     onPeerClickRef.current = onPeerClick;
     canConnectRef.current = canConnect;
   });
+
+  // Map style lookup by theme
+  function getMapStyle(t: string): string {
+    return t === "light"
+      ? "mapbox://styles/mapbox/light-v11"
+      : "mapbox://styles/mapbox/dark-v11";
+  }
 
   // Initialise the map once.
   useEffect(() => {
@@ -53,7 +64,7 @@ export default function WorldMap({
       mapboxgl.accessToken = TOKEN;
       const map = new mapboxgl.Map({
         container: containerRef.current,
-        style: "mapbox://styles/mapbox/dark-v11",
+        style: getMapStyle(themeRef.current),
         // Open centered on the user if we know where they are, else world view.
         center: me ? [me.lng, me.lat] : [0, 20],
         zoom: me ? 15 : 1.4,
@@ -78,6 +89,17 @@ export default function WorldMap({
     // `me` is only read for the initial center; we don't want to re-init on change.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
+
+  // Switch map style when theme changes (only after initial load)
+  useEffect(() => {
+    const map = mapRef.current;
+    if (!map || !ready) return;
+    const style = getMapStyle(theme);
+    // Only switch if the style actually differs
+    if (!map.getStyle() || map.getStyle().name !== (theme === "light" ? "Light" : "Dark")) {
+      map.setStyle(style);
+    }
+  }, [theme, ready]);
 
   // Show / move the user's own "you are here" pin.
   useEffect(() => {
