@@ -56,7 +56,7 @@ export default function WorldMap({
         style: "mapbox://styles/mapbox/dark-v11",
         // Open centered on the user if we know where they are, else world view.
         center: me ? [me.lng, me.lat] : [0, 20],
-        zoom: me ? 4 : 1.4,
+        zoom: me ? 15 : 1.4,
         attributionControl: true,
       });
       map.on("load", () => {
