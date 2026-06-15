@@ -39,7 +39,7 @@ export default function Home() {
   const { theme, toggle: toggleTheme } = useTheme();
   const [user, setUser] = useState<{ id: string; name: string; email: string } | null>(null);
   const peerNamesRef = useRef<Map<string, string>>(new Map());
-  const [peerName, setPeerName] = useState<string>("Stranger");
+  const [peerName, setPeerName] = useState<string>("Anonymous");
 
   const [conn, _setConn] = useState<Conn>({ kind: "idle" });
   const connRef = useRef<Conn>(conn);
@@ -59,6 +59,10 @@ export default function Home() {
   const msgId = useRef(0);
   const requestTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const pairIdRef = useRef<string | null>(null);
+
+  const [videoPip, setVideoPip] = useState(false);
+  const [cameraOn, setCameraOn] = useState(true);
+  const [audioOn, setAudioOn] = useState(true);
 
   // Persist sent message to the server
   const persistMessage = useCallback(async (text: string) => {
@@ -146,6 +150,8 @@ export default function Home() {
             .then((stream) => {
               setLocalStream(stream);
               setVideo("active");
+              setVideoPip(false);
+              setCameraOn(true);
             })
             .catch(() => {
               setVideo("none");
@@ -172,7 +178,7 @@ export default function Home() {
   function requestConnection(peerId: string) {
     if (connRef.current.kind !== "idle") return;
     setConn({ kind: "requesting", peerId });
-    void sendSignal(sessionId, peerId, "request", user?.name ?? "Someone");
+    void sendSignal(sessionId, peerId, "request", user?.name ?? "Anonymous");
     requestTimer.current = setTimeout(() => {
       if (
         connRef.current.kind === "requesting" &&
@@ -197,7 +203,7 @@ export default function Home() {
     startPeer(peerId, false);
     const pid = makePairId(sessionId, peerId);
     pairIdRef.current = pid;
-    void sendSignal(sessionId, peerId, "accept", user?.name ?? "Someone");
+    void sendSignal(sessionId, peerId, "accept", user?.name ?? "Anonymous");
     setConn({ kind: "connecting", peerId });
     loadHistory(pid);
   }
@@ -230,6 +236,8 @@ export default function Home() {
         setLocalStream(stream);
         ps.sendControl("video-accept");
         setVideo("active");
+        setVideoPip(false);
+        setCameraOn(true);
       })
       .catch(() => {
         ps.sendControl("video-decline");
@@ -250,16 +258,37 @@ export default function Home() {
     setLocalStream(null);
     setRemoteStream(null);
     setVideo("none");
+    setCameraOn(false);
+  }
+
+  function toggleCamera() {
+    const s = localStream;
+    if (!s) return;
+    const tracks = s.getVideoTracks();
+    if (!tracks.length) return;
+    const next = !cameraOn;
+    for (const t of tracks) t.enabled = next;
+    setCameraOn(next);
+  }
+
+  function toggleAudio() {
+    const s = localStream;
+    if (!s) return;
+    const tracks = s.getAudioTracks();
+    if (!tracks.length) return;
+    const next = !audioOn;
+    for (const t of tracks) t.enabled = next;
+    setAudioOn(next);
   }
 
   function processSignal(sig: SignalMsg) {
     switch (sig.type) {
       case "request": {
-        if (sig.payload) peerNamesRef.current.set(sig.fromId, sig.payload);
-        if (connRef.current.kind === "idle") {
-          setConn({ kind: "incoming", peerId: sig.fromId });
-          setPeerName(sig.payload ?? "Stranger");
-        } else {
+          if (sig.payload) peerNamesRef.current.set(sig.fromId, sig.payload);
+          if (connRef.current.kind === "idle") {
+            setConn({ kind: "incoming", peerId: sig.fromId });
+            setPeerName(sig.payload ?? "Anonymous");
+          } else {
           void sendSignal(sessionId, sig.fromId, "decline");
         }
         break;
@@ -272,7 +301,7 @@ export default function Home() {
           pairIdRef.current = makePairId(sessionId, sig.fromId);
           startPeer(sig.fromId, true);
           setConn({ kind: "connecting", peerId: sig.fromId });
-          setPeerName(sig.payload ?? "Stranger");
+          setPeerName(sig.payload ?? "Anonymous");
           loadHistory(makePairId(sessionId, sig.fromId));
         }
         break;
@@ -302,7 +331,7 @@ export default function Home() {
       case "end": {
         const c = connRef.current;
         if (c.kind === "idle") break;
-        const name = peerNamesRef.current.get(c.peerId) ?? "Stranger";
+        const name = peerNamesRef.current.get(c.peerId) ?? "Anonymous";
         if (
           (c.kind === "incoming" ||
             c.kind === "connecting" ||
@@ -494,7 +523,13 @@ export default function Home() {
         <VideoPanel
           localStream={localStream}
           remoteStream={remoteStream}
-          onEnd={endVideo}
+          onDrop={endVideo}
+          pip={videoPip}
+          cameraOn={cameraOn}
+          audioOn={audioOn}
+          onTogglePiP={() => setVideoPip((p) => !p)}
+          onToggleCamera={toggleCamera}
+          onToggleAudio={toggleAudio}
         />
       )}
     </main>

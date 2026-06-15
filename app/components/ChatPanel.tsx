@@ -70,7 +70,7 @@ export default function ChatPanel({
       <div className="flex-1 space-y-2 overflow-y-auto p-4">
         {messages.length === 0 && (
           <p className="mt-8 text-center text-sm text-fg-muted">
-            Say hello. Messages are peer-to-peer and never stored.
+            No messages yet. Conversation history is restored when you reconnect with this user.
           </p>
         )}
         {messages.map((m) => (
