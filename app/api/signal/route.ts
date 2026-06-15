@@ -33,6 +33,11 @@ export async function POST(request: NextRequest) {
     unknown
   >;
 
+  // Validate IDs early to satisfy Prisma typings and avoid using unknown values.
+  if (typeof fromId !== "string" || typeof toId !== "string") {
+    return Response.json({ error: "invalid ids" }, { status: 400 });
+  }
+
   // Basic sanity: no self-signals
   if (fromId === toId) {
     return Response.json({ error: "invalid ids" }, { status: 400 });
@@ -42,10 +47,6 @@ export async function POST(request: NextRequest) {
   const sender = await prisma.presence.findUnique({ where: { id: fromId } });
   if (!sender) {
     return Response.json({ error: "forbidden" }, { status: 403 });
-  }
-
-  if (typeof fromId !== "string" || typeof toId !== "string") {
-    return Response.json({ error: "invalid ids" }, { status: 400 });
   }
   if (typeof type !== "string" || !VALID_TYPES.includes(type as SignalType)) {
     return Response.json({ error: "invalid type" }, { status: 400 });
