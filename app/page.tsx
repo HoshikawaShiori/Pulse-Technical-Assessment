@@ -335,46 +335,44 @@ export default function Home() {
     window.location.href = "/login";
   }
 
-  if (phase === "gate") {
-    return (
-      <>
-        {user && (
-          <div className="absolute right-4 top-4 z-50 flex items-center gap-3">
-            <span className="text-sm text-zinc-400">{user.name}</span>
-            <button
-              onClick={handleLogout}
-              className="rounded-full bg-zinc-800 px-3 py-1 text-xs text-zinc-300 hover:bg-zinc-700"
-            >
-              Logout
-            </button>
-          </div>
-        )}
-        <EntryGate onReady={handleReady} />
-      </>
-    );
-  }
-
   const inChat = conn.kind === "connecting" || conn.kind === "connected";
 
   return (
-    <main className="fixed inset-0 overflow-hidden">
-      {user && (
-        <div className="absolute right-4 top-4 z-50 flex items-center gap-3">
-          <span className="text-sm text-zinc-400">{user.name}</span>
-          <button
-            onClick={handleLogout}
-            className="rounded-full bg-zinc-800 px-3 py-1 text-xs text-zinc-300 hover:bg-zinc-700"
-          >
-            Logout
-          </button>
+    <div className="flex h-screen flex-col bg-zinc-950">
+      {/* Responsive Navbar */}
+      <nav className="relative z-50 flex items-center justify-between border-b border-zinc-800 bg-zinc-950/90 px-4 py-2 backdrop-blur-sm">
+        <span className="text-lg font-bold text-zinc-100">Pulse</span>
+        <div className="flex items-center gap-3">
+          {user && (
+            <>
+              <span className="hidden text-sm text-zinc-400 sm:inline">{user.name}</span>
+              <button
+                onClick={handleLogout}
+                className="rounded-full bg-zinc-800 px-3 py-1.5 text-xs text-zinc-300 hover:bg-zinc-700 sm:text-sm"
+              >
+                Logout
+              </button>
+            </>
+          )}
+          {/* Mobile user name shown on a second line inside nav on small screens */}
+          {user && (
+            <span className="block text-xs text-zinc-500 sm:hidden">{user.name}</span>
+          )}
         </div>
-      )}
-      <WorldMap
-        peers={peers}
-        me={myLocation}
-        onPeerClick={requestConnection}
-        canConnect={conn.kind === "idle"}
-      />
+      </nav>
+
+      {/* Main content area */}
+      <main className="relative flex-1 overflow-hidden">
+        {phase === "gate" ? (
+          <EntryGate onReady={handleReady} />
+        ) : (
+          <WorldMap
+            peers={peers}
+            me={myLocation}
+            onPeerClick={requestConnection}
+            canConnect={conn.kind === "idle"}
+          />
+        )}
 
       {notice && (
         <div className="absolute left-1/2 top-20 z-30 -translate-x-1/2 rounded-full bg-zinc-800/90 px-4 py-2 text-sm text-zinc-100 shadow-lg backdrop-blur">
@@ -444,5 +442,6 @@ export default function Home() {
         />
       )}
     </main>
+    </div>
   );
 }
