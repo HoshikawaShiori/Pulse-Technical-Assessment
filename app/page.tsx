@@ -376,16 +376,17 @@ export default function Home() {
   const inChat = conn.kind === "connecting" || conn.kind === "connected";
 
   return (
-    <div className="flex h-screen flex-col bg-zinc-950">
+  <div className="flex h-screen flex-col" style={{ background: "var(--bg)" }}>
       {/* Responsive Navbar */}
-      <nav className="relative z-50 flex items-center justify-between border-b border-zinc-800 bg-zinc-950/90 px-4 py-2 backdrop-blur-sm">
-        <span className="text-lg font-bold text-zinc-100">Pulse</span>
+      <nav className="relative z-50 flex items-center justify-between px-4 py-2 backdrop-blur-sm" style={{ borderBottom: "1px solid var(--border)", background: "var(--bg-elevated)" }}>
+        <span className="text-lg font-bold text-brand">Pulse</span>
         <div className="flex items-center gap-2">
           {/* Theme toggle */}
           <button
             onClick={toggleTheme}
             title={`Switch to ${theme === "dark" ? "light" : "dark"} mode`}
-            className="rounded-full p-2 text-zinc-400 hover:bg-zinc-800 hover:text-zinc-100 transition-colors"
+            className="rounded-full p-2 transition-colors"
+            style={{ color: "var(--fg-muted)" }}
           >
             {theme === "dark" ? (
               <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" className="h-5 w-5">
@@ -399,17 +400,18 @@ export default function Home() {
           </button>
           {user && (
             <>
-              <span className="hidden text-sm text-zinc-400 sm:inline">{user.name}</span>
-              <button
+              <span className="hidden text-sm" style={{ color: "var(--fg-muted)" }}>{user.name}</span>
+                <button
                 onClick={handleLogout}
-                className="rounded-full bg-zinc-800 px-3 py-1.5 text-xs text-zinc-300 hover:bg-zinc-700 sm:text-sm"
+                className="rounded-full px-3 py-1.5 text-xs sm:text-sm"
+                style={{ background: "var(--bg-elevated)", color: "var(--fg)" }}
               >
                 Logout
               </button>
             </>
           )}
           {user && (
-            <span className="block text-xs text-zinc-500 sm:hidden">{user.name}</span>
+            <span className="block text-xs sm:hidden" style={{ color: "var(--fg-subtle)" }}>{user.name}</span>
           )}
         </div>
       </nav>
@@ -428,17 +430,18 @@ export default function Home() {
         )}
 
       {notice && (
-        <div className="absolute left-1/2 top-20 z-30 -translate-x-1/2 rounded-full bg-zinc-800/90 px-4 py-2 text-sm text-zinc-100 shadow-lg backdrop-blur">
+        <div className="absolute left-1/2 top-20 z-30 -translate-x-1/2 rounded-full px-4 py-2 text-sm shadow-lg backdrop-blur" style={{ background: "var(--bg-elevated)", color: "var(--fg)" }}>
           {notice}
         </div>
       )}
 
       {conn.kind === "requesting" && (
-        <div className="absolute left-1/2 top-20 z-30 flex -translate-x-1/2 items-center gap-3 rounded-full bg-zinc-800/90 px-4 py-2 text-sm text-zinc-100 shadow-lg backdrop-blur">
+        <div className="absolute left-1/2 top-20 z-30 flex -translate-x-1/2 items-center gap-3 rounded-full px-4 py-2 text-sm shadow-lg backdrop-blur" style={{ background: "var(--bg-elevated)", color: "var(--fg)" }}>
           <span>Requesting connection…</span>
           <button
             onClick={cancelRequest}
-            className="rounded-full bg-zinc-700 px-3 py-1 text-xs hover:bg-zinc-600"
+            className="rounded-full px-3 py-1 text-xs"
+            style={{ background: "var(--bg-input)" }}
           >
             Cancel
           </button>
@@ -471,7 +474,7 @@ export default function Home() {
       )}
 
       {video === "requesting" && (
-        <div className="absolute bottom-24 left-1/2 z-30 -translate-x-1/2 rounded-full bg-zinc-800/90 px-4 py-2 text-sm text-zinc-100 shadow-lg backdrop-blur">
+        <div className="absolute bottom-24 left-1/2 z-30 -translate-x-1/2 rounded-full px-4 py-2 text-sm shadow-lg backdrop-blur" style={{ background: "var(--bg-elevated)", color: "var(--fg)" }}>
           Waiting for stranger to accept video…
         </div>
       )}

@@ -1,7 +1,5 @@
 "use client";
 
-// Reusable centered prompt for "someone wants to connect" and
-// "someone wants to start video".
 export default function ConnectionPrompt({
   title,
   subtitle,
@@ -18,20 +16,21 @@ export default function ConnectionPrompt({
   onDecline: () => void;
 }) {
   return (
-    <div className="absolute inset-0 z-20 flex items-center justify-center bg-black/60 p-6">
-      <div className="w-full max-w-xs rounded-2xl bg-zinc-900 p-6 text-center text-zinc-100 shadow-xl">
+    <div className="absolute inset-0 z-20 flex items-center justify-center p-6" style={{ background: "var(--overlay)" }}>
+      <div className="w-full max-w-xs rounded-2xl p-6 text-center shadow-xl" style={{ background: "var(--surface)", color: "var(--fg)" }}>
         <h2 className="text-lg font-semibold">{title}</h2>
-        {subtitle && <p className="mt-1 text-sm text-zinc-400">{subtitle}</p>}
+        {subtitle && <p className="mt-1 text-sm text-fg-muted">{subtitle}</p>}
         <div className="mt-5 flex gap-3">
           <button
             onClick={onDecline}
-            className="flex-1 rounded-full border border-zinc-700 px-4 py-2 text-sm font-medium text-zinc-300 hover:border-zinc-500"
+            className="flex-1 rounded-full border px-4 py-2 text-sm font-medium transition-colors"
+            style={{ borderColor: "var(--border-strong)", color: "var(--fg-muted)" }}
           >
             {declineLabel}
           </button>
           <button
             onClick={onAccept}
-            className="flex-1 rounded-full bg-emerald-400 px-4 py-2 text-sm font-semibold text-zinc-950 hover:bg-emerald-300"
+            className="flex-1 rounded-full bg-brand px-4 py-2 text-sm font-semibold text-brand-on hover:bg-brand-hover"
           >
             {acceptLabel}
           </button>

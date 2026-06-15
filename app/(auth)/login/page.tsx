@@ -42,75 +42,47 @@ export default function LoginPage() {
   }
 
   return (
-    <div className="flex min-h-screen flex-col items-center justify-center bg-zinc-950 p-6">
+    <div className="flex min-h-screen flex-col items-center justify-center p-6">
       <div className="w-full max-w-sm">
         <div className="mb-8 text-center">
-          <h1 className="text-3xl font-bold text-zinc-100">Welcome back</h1>
-          <p className="mt-2 text-sm text-zinc-400">Sign in to Pulse</p>
+          <h1 className="text-3xl font-bold text-fg">Welcome back</h1>
+          <p className="mt-2 text-sm text-fg-muted">Sign in to Pulse</p>
         </div>
 
         <form onSubmit={handleSubmit} className="space-y-4">
           <div>
-            <label
-              htmlFor="email"
-              className="block text-sm font-medium text-zinc-300"
-            >
-              Email
-            </label>
+            <label htmlFor="email" className="block text-sm font-medium text-fg-subtle">Email</label>
             <input
-              id="email"
-              name="email"
-              type="email"
-              placeholder="you@example.com"
-              required
-              className="mt-1 w-full rounded-lg border border-zinc-700 bg-zinc-800 px-4 py-2.5 text-sm text-zinc-100 placeholder-zinc-500 focus:border-emerald-400 focus:outline-none focus:ring-1 focus:ring-emerald-400"
+              id="email" name="email" type="email" placeholder="you@example.com" required
+              className="mt-1 w-full rounded-lg border px-4 py-2.5 text-sm text-fg placeholder:text-fg-muted focus:border-brand focus:outline-none focus:ring-1 focus:ring-brand"
+              style={{ borderColor: "var(--border-strong)", background: "var(--bg-input)" }}
             />
-            {errors.email && (
-              <p className="mt-1 text-xs text-red-400">{errors.email[0]}</p>
-            )}
+            {errors.email && <p className="mt-1 text-xs text-danger">{errors.email[0]}</p>}
           </div>
 
           <div>
-            <label
-              htmlFor="password"
-              className="block text-sm font-medium text-zinc-300"
-            >
-              Password
-            </label>
+            <label htmlFor="password" className="block text-sm font-medium text-fg-subtle">Password</label>
             <input
-              id="password"
-              name="password"
-              type="password"
-              placeholder="••••••••"
-              required
-              className="mt-1 w-full rounded-lg border border-zinc-700 bg-zinc-800 px-4 py-2.5 text-sm text-zinc-100 placeholder-zinc-500 focus:border-emerald-400 focus:outline-none focus:ring-1 focus:ring-emerald-400"
+              id="password" name="password" type="password" placeholder="••••••••" required
+              className="mt-1 w-full rounded-lg border px-4 py-2.5 text-sm text-fg placeholder:text-fg-muted focus:border-brand focus:outline-none focus:ring-1 focus:ring-brand"
+              style={{ borderColor: "var(--border-strong)", background: "var(--bg-input)" }}
             />
-            {errors.password && (
-              <p className="mt-1 text-xs text-red-400">{errors.password[0]}</p>
-            )}
+            {errors.password && <p className="mt-1 text-xs text-danger">{errors.password[0]}</p>}
           </div>
 
-          {error && (
-            <p className="text-center text-sm text-red-400">{error}</p>
-          )}
+          {error && <p className="text-center text-sm text-danger">{error}</p>}
 
           <button
-            type="submit"
-            disabled={pending}
-            className="w-full rounded-full bg-emerald-400 px-4 py-2.5 font-semibold text-zinc-950 transition hover:bg-emerald-300 disabled:opacity-60"
+            type="submit" disabled={pending}
+            className="w-full rounded-full bg-brand px-4 py-2.5 font-semibold text-brand-on transition hover:bg-brand-hover disabled:opacity-60"
           >
             {pending ? "Signing in…" : "Sign in"}
           </button>
         </form>
 
-        <p className="mt-6 text-center text-sm text-zinc-500">
+        <p className="mt-6 text-center text-sm text-fg-muted">
           Don't have an account?{" "}
-          <Link
-            href="/signup"
-            className="font-medium text-emerald-400 hover:text-emerald-300"
-          >
-            Sign up
-          </Link>
+          <Link href="/signup" className="font-medium text-brand hover:text-brand-hover">Sign up</Link>
         </p>
       </div>
     </div>

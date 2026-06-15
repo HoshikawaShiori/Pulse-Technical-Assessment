@@ -27,37 +27,40 @@ export default function VideoPanel({
   }, [remoteStream]);
 
   return (
-    <div className="absolute inset-0 z-30 flex flex-col bg-black">
+  <div className="absolute inset-0 z-30 flex flex-col" style={{ background: "var(--bg)" }}>
       <div className="relative flex-1">
         {/* Remote (full screen) */}
-        <video
-          ref={remoteRef}
-          autoPlay
-          playsInline
-          className="h-full w-full bg-zinc-900 object-cover"
-        />
-        {!remoteStream && (
-          <div className="absolute inset-0 flex items-center justify-center text-zinc-500">
-            Waiting for stranger&rsquo;s video…
-          </div>
-        )}
+          <video
+            ref={remoteRef}
+            autoPlay
+            playsInline
+            className="h-full w-full object-cover"
+            style={{ background: "var(--surface-alt)" }}
+          />
+          {!remoteStream && (
+            <div className="absolute inset-0 flex items-center justify-center" style={{ color: "var(--fg-subtle)" }}>
+              Waiting for stranger&rsquo;s video…
+            </div>
+          )}
         {/* Local (picture-in-picture) */}
-        <video
-          ref={localRef}
-          autoPlay
-          playsInline
-          muted
-          className="absolute bottom-4 right-4 h-40 w-28 rounded-lg border border-zinc-700 bg-zinc-800 object-cover"
-        />
+         <video
+           ref={localRef}
+           autoPlay
+           playsInline
+           muted
+           className="absolute bottom-4 right-4 h-40 w-28 rounded-lg object-cover"
+           style={{ border: "1px solid var(--border-strong)", background: "var(--bg-input)" }}
+         />
       </div>
-      <div className="flex justify-center bg-zinc-950 p-4">
-        <button
-          onClick={onEnd}
-          className="rounded-full bg-red-500 px-8 py-3 font-semibold text-white hover:bg-red-400"
-        >
-          End video
-        </button>
-      </div>
+       <div className="flex justify-center p-4" style={{ background: "var(--bg-elevated)" }}>
+         <button
+           onClick={onEnd}
+           className="rounded-full px-8 py-3 font-semibold"
+           style={{ background: "var(--danger)", color: "white" }}
+         >
+           End video
+         </button>
+       </div>
     </div>
   );
 }

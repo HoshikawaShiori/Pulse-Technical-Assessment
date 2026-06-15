@@ -13,7 +13,8 @@ function dotColor(id: string): string {
   for (let i = 0; i < id.length; i++) {
     hash = (hash * 31 + id.charCodeAt(i)) | 0;
   }
-  return `hsl(${Math.abs(hash) % 360}, 70%, 60%)`;
+  // Purple-ish hue range (240-320) to match brand
+  return `hsl(${240 + (Math.abs(hash) % 80)}, 65%, 72%)`;
 }
 
 export default function WorldMap({
@@ -36,8 +37,6 @@ export default function WorldMap({
   const themeRef = useRef(theme);
   useEffect(() => { themeRef.current = theme; });
 
-  // Marker click handlers are bound once, so read the live click handler +
-  // connectability through refs (synced in an effect, never during render).
   const onPeerClickRef = useRef(onPeerClick);
   const canConnectRef = useRef(canConnect);
   useEffect(() => {
@@ -45,14 +44,12 @@ export default function WorldMap({
     canConnectRef.current = canConnect;
   });
 
-  // Map style lookup by theme
   function getMapStyle(t: string): string {
     return t === "light"
       ? "mapbox://styles/mapbox/light-v11"
       : "mapbox://styles/mapbox/dark-v11";
   }
 
-  // Initialise the map once.
   useEffect(() => {
     if (!TOKEN || !containerRef.current) return;
     let cancelled = false;
@@ -65,7 +62,6 @@ export default function WorldMap({
       const map = new mapboxgl.Map({
         container: containerRef.current,
         style: getMapStyle(themeRef.current),
-        // Open centered on the user if we know where they are, else world view.
         center: me ? [me.lng, me.lat] : [0, 20],
         zoom: me ? 15 : 1.4,
         attributionControl: true,
@@ -86,22 +82,17 @@ export default function WorldMap({
       mapRef.current = null;
       setReady(false);
     };
-    // `me` is only read for the initial center; we don't want to re-init on change.
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  // Switch map style when theme changes (only after initial load)
   useEffect(() => {
     const map = mapRef.current;
     if (!map || !ready) return;
     const style = getMapStyle(theme);
-    // Only switch if the style actually differs
     if (!map.getStyle() || map.getStyle().name !== (theme === "light" ? "Light" : "Dark")) {
       map.setStyle(style);
     }
   }, [theme, ready]);
 
-  // Show / move the user's own "you are here" pin.
   useEffect(() => {
     const map = mapRef.current;
     if (!map || !ready || !me) return;
@@ -115,7 +106,6 @@ export default function WorldMap({
         el.className = "pulse-me";
         el.title = "You are here";
         el.innerHTML = `<span class="pulse-me-label">Me</span>📍`;
-        // anchor "bottom" → the pin's tip sits on the exact coordinate.
         meMarkerRef.current = new mapboxgl.Marker({ element: el, anchor: "bottom" })
           .setLngLat([me.lng, me.lat])
           .addTo(map);
@@ -129,7 +119,6 @@ export default function WorldMap({
     };
   }, [me, ready]);
 
-  // Reconcile markers whenever the peer list changes (or the map becomes ready).
   useEffect(() => {
     const map = mapRef.current;
     if (!map || !ready) return;
@@ -161,7 +150,6 @@ export default function WorldMap({
         marker.getElement().style.opacity = peer.busy ? "0.35" : "1";
       }
 
-      // Drop markers for peers that went offline / got filtered out.
       for (const [id, marker] of markers) {
         if (!seen.has(id)) {
           marker.remove();
@@ -177,20 +165,20 @@ export default function WorldMap({
 
   return (
     <div className="absolute inset-0">
-      <div ref={containerRef} className="h-full w-full bg-zinc-900" />
+      <div ref={containerRef} className="h-full w-full" style={{ background: "var(--surface-alt)" }} />
 
       {!TOKEN && (
         <div className="absolute inset-0 flex items-center justify-center p-6 text-center">
-          <p className="max-w-md rounded-lg bg-zinc-800 p-4 text-sm text-zinc-200">
+          <p className="max-w-md rounded-lg p-4 text-sm" style={{ background: "var(--surface)", color: "var(--fg-subtle)" }}>
             Set{" "}
-            <code className="text-emerald-400">NEXT_PUBLIC_MAPBOX_TOKEN</code> in{" "}
+            <code className="text-brand">NEXT_PUBLIC_MAPBOX_TOKEN</code> in{" "}
             <code>.env</code> to load the map.
           </p>
         </div>
       )}
 
       {/* Online count */}
-      <div className="absolute bottom-4 left-4 rounded-full bg-zinc-900/80 px-3 py-1.5 text-xs text-zinc-300 backdrop-blur">
+      <div className="absolute bottom-4 left-4 rounded-full px-3 py-1.5 text-xs backdrop-blur" style={{ background: "var(--surface)", color: "var(--fg-subtle)" }}>
         {peers.length} online
       </div>
     </div>
