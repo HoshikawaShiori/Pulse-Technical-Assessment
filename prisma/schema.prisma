@@ -51,3 +51,16 @@ model Signal {
 
   @@index([toId])
 }
+
+// Chat messages are persisted so conversation history survives reconnects.
+// The pairId is the two session IDs joined with a separator, sorted alphabetically.
+// Messages are cleaned up when the connection ends (accept → end signal pair).
+model Message {
+  id        String   @id @default(uuid())
+  pairId    String   // "sessionA|sessionB" where A < B lexicographically
+  senderId  String   // session ID of the sender
+  text      String
+  createdAt DateTime @default(now())
+
+  @@index([pairId, createdAt])
+}

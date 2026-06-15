@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState, useCallback } from "react";
 import EntryGate from "./components/EntryGate";
 import WorldMap from "./components/WorldMap";
 import ConnectionPrompt from "./components/ConnectionPrompt";
@@ -11,6 +11,7 @@ import { PeerSession, type DescType, type PeerControl } from "@/lib/webrtc";
 import { POLL_INTERVAL_MS } from "@/lib/presence";
 import { type PeerDot, type SignalMsg } from "@/lib/types";
 import { useTheme } from "@/lib/theme-context";
+import { makePairId } from "@/lib/chat-utils";
 
 type Conn =
   | { kind: "idle" }
@@ -57,6 +58,35 @@ export default function Home() {
   const peerRef = useRef<PeerSession | null>(null);
   const msgId = useRef(0);
   const requestTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const pairIdRef = useRef<string | null>(null);
+
+  // Persist sent message to the server
+  const persistMessage = useCallback(async (text: string) => {
+    const pid = pairIdRef.current;
+    if (!pid) return;
+    try {
+      await fetch("/api/chat/send", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ pairId: pid, senderId: sessionId, text }),
+      });
+    } catch {}
+  }, [sessionId]);
+
+  async function loadHistory(pairId: string) {
+    try {
+      const res = await fetch(`/api/chat/history?pairId=${encodeURIComponent(pairId)}`, { cache: "no-store" });
+      if (!res.ok) return;
+      const data = await res.json();
+      if (!data.messages?.length) return;
+      const restored: ChatMessage[] = data.messages.map((m: { id: string; senderId: string; text: string }) => ({
+        id: msgId.current++,
+        mine: m.senderId === sessionId,
+        text: m.text,
+      }));
+      setMessages(restored);
+    } catch {}
+  }
 
   function showNotice(text: string) {
     setNotice(text);
@@ -65,6 +95,10 @@ export default function Home() {
 
   function addMessage(mine: boolean, text: string) {
     setMessages((prev) => [...prev, { id: msgId.current++, mine, text }]);
+    // Persist own messages to the server
+    if (mine) {
+      void persistMessage(text);
+    }
   }
 
   function teardown(message?: string) {
@@ -76,6 +110,7 @@ export default function Home() {
     setVideo("none");
     setMessages([]);
     setConn({ kind: "idle" });
+    pairIdRef.current = null;
     if (message) showNotice(message);
   }
 
@@ -137,7 +172,6 @@ export default function Home() {
   function requestConnection(peerId: string) {
     if (connRef.current.kind !== "idle") return;
     setConn({ kind: "requesting", peerId });
-    // Send our name so the other user sees who we are
     void sendSignal(sessionId, peerId, "request", user?.name ?? "Someone");
     requestTimer.current = setTimeout(() => {
       if (
@@ -161,9 +195,11 @@ export default function Home() {
     if (connRef.current.kind !== "incoming") return;
     const peerId = connRef.current.peerId;
     startPeer(peerId, false);
-    // Send our name back so they see who accepted
+    const pid = makePairId(sessionId, peerId);
+    pairIdRef.current = pid;
     void sendSignal(sessionId, peerId, "accept", user?.name ?? "Someone");
     setConn({ kind: "connecting", peerId });
+    loadHistory(pid);
   }
 
   function declineIncoming() {
@@ -219,7 +255,6 @@ export default function Home() {
   function processSignal(sig: SignalMsg) {
     switch (sig.type) {
       case "request": {
-        // Store the requester's name from the payload (if provided)
         if (sig.payload) peerNamesRef.current.set(sig.fromId, sig.payload);
         if (connRef.current.kind === "idle") {
           setConn({ kind: "incoming", peerId: sig.fromId });
@@ -230,14 +265,15 @@ export default function Home() {
         break;
       }
       case "accept": {
-        // Store the accepter's name from the payload (if provided)
         if (sig.payload) peerNamesRef.current.set(sig.fromId, sig.payload);
         const c = connRef.current;
         if (c.kind === "requesting" && c.peerId === sig.fromId) {
           if (requestTimer.current) clearTimeout(requestTimer.current);
+          pairIdRef.current = makePairId(sessionId, sig.fromId);
           startPeer(sig.fromId, true);
           setConn({ kind: "connecting", peerId: sig.fromId });
           setPeerName(sig.payload ?? "Stranger");
+          loadHistory(makePairId(sessionId, sig.fromId));
         }
         break;
       }
@@ -352,12 +388,10 @@ export default function Home() {
             className="rounded-full p-2 text-zinc-400 hover:bg-zinc-800 hover:text-zinc-100 transition-colors"
           >
             {theme === "dark" ? (
-              /* Sun icon for switching to light */
               <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" className="h-5 w-5">
                 <path d="M12 2.25a.75.75 0 01.75.75v2.25a.75.75 0 01-1.5 0V3a.75.75 0 01.75-.75zM7.5 12a4.5 4.5 0 119 0 4.5 4.5 0 01-9 0zM18.894 6.166a.75.75 0 00-1.06-1.06l-1.591 1.59a.75.75 0 101.06 1.061l1.591-1.59zM21.75 12a.75.75 0 01-.75.75h-2.25a.75.75 0 010-1.5H21a.75.75 0 01.75.75zM17.834 18.894a.75.75 0 001.06-1.06l-1.59-1.591a.75.75 0 10-1.061 1.06l1.59 1.591zM12 18a.75.75 0 01.75.75V21a.75.75 0 01-1.5 0v-2.25A.75.75 0 0112 18zM7.758 17.303a.75.75 0 00-1.061-1.06l-1.591 1.59a.75.75 0 001.06 1.061l1.591-1.59zM6 12a.75.75 0 01-.75.75H3a.75.75 0 010-1.5h2.25A.75.75 0 016 12zM6.697 7.757a.75.75 0 001.06-1.06l-1.59-1.591a.75.75 0 00-1.061 1.06l1.59 1.591z" />
               </svg>
             ) : (
-              /* Moon icon for switching to dark */
               <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" className="h-5 w-5">
                 <path fillRule="evenodd" d="M9.528 1.718a.75.75 0 01.162.819A8.97 8.97 0 009 6a9 9 0 009 9 8.97 8.97 0 003.463-.69.75.75 0 01.981.98 10.503 10.503 0 01-9.694 6.46c-5.799 0-10.5-4.701-10.5-10.5 0-4.368 2.667-8.112 6.46-9.694a.75.75 0 01.818.162z" clipRule="evenodd" />
               </svg>
@@ -374,7 +408,6 @@ export default function Home() {
               </button>
             </>
           )}
-          {/* Mobile user name shown on a second line inside nav on small screens */}
           {user && (
             <span className="block text-xs text-zinc-500 sm:hidden">{user.name}</span>
           )}
