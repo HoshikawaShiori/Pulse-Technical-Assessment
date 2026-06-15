@@ -1,6 +1,7 @@
 import type { NextRequest } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { applyPrivacyOffset, isValidLatLng } from "@/lib/geo";
+import { requireAuth } from "@/lib/api-auth";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -9,6 +10,9 @@ export const dynamic = "force-dynamic";
 // Applies a 1–3 km privacy offset and upserts the presence row. Raw
 // coordinates are never stored.
 export async function POST(request: NextRequest) {
+  const auth = await requireAuth();
+  if (auth instanceof Response) return auth;
+
   let body: unknown;
   try {
     body = await request.json();

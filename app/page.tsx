@@ -34,6 +34,10 @@ export default function Home() {
     null,
   );
 
+  const [user, setUser] = useState<{ id: string; name: string; email: string } | null>(null);
+  const peerNamesRef = useRef<Map<string, string>>(new Map());
+  const [peerName, setPeerName] = useState<string>("Stranger");
+
   const [conn, _setConn] = useState<Conn>({ kind: "idle" });
   const connRef = useRef<Conn>(conn);
   const setConn = (c: Conn) => {
@@ -131,7 +135,8 @@ export default function Home() {
   function requestConnection(peerId: string) {
     if (connRef.current.kind !== "idle") return;
     setConn({ kind: "requesting", peerId });
-    void sendSignal(sessionId, peerId, "request");
+    // Send our name so the other user sees who we are
+    void sendSignal(sessionId, peerId, "request", user?.name ?? "Someone");
     requestTimer.current = setTimeout(() => {
       if (
         connRef.current.kind === "requesting" &&
@@ -154,7 +159,8 @@ export default function Home() {
     if (connRef.current.kind !== "incoming") return;
     const peerId = connRef.current.peerId;
     startPeer(peerId, false);
-    void sendSignal(sessionId, peerId, "accept");
+    // Send our name back so they see who accepted
+    void sendSignal(sessionId, peerId, "accept", user?.name ?? "Someone");
     setConn({ kind: "connecting", peerId });
   }
 
@@ -211,19 +217,25 @@ export default function Home() {
   function processSignal(sig: SignalMsg) {
     switch (sig.type) {
       case "request": {
+        // Store the requester's name from the payload (if provided)
+        if (sig.payload) peerNamesRef.current.set(sig.fromId, sig.payload);
         if (connRef.current.kind === "idle") {
           setConn({ kind: "incoming", peerId: sig.fromId });
+          setPeerName(sig.payload ?? "Stranger");
         } else {
           void sendSignal(sessionId, sig.fromId, "decline");
         }
         break;
       }
       case "accept": {
+        // Store the accepter's name from the payload (if provided)
+        if (sig.payload) peerNamesRef.current.set(sig.fromId, sig.payload);
         const c = connRef.current;
         if (c.kind === "requesting" && c.peerId === sig.fromId) {
           if (requestTimer.current) clearTimeout(requestTimer.current);
           startPeer(sig.fromId, true);
           setConn({ kind: "connecting", peerId: sig.fromId });
+          setPeerName(sig.payload ?? "Stranger");
         }
         break;
       }
@@ -251,6 +263,8 @@ export default function Home() {
       }
       case "end": {
         const c = connRef.current;
+        if (c.kind === "idle") break;
+        const name = peerNamesRef.current.get(c.peerId) ?? "Stranger";
         if (
           (c.kind === "incoming" ||
             c.kind === "connecting" ||
@@ -258,7 +272,7 @@ export default function Home() {
           c.peerId === sig.fromId
         ) {
           if (c.kind === "incoming") setConn({ kind: "idle" });
-          else teardown("Stranger disconnected.");
+          else teardown(`${name} disconnected.`);
         }
         break;
       }
@@ -303,20 +317,58 @@ export default function Home() {
     };
   }, [sessionId, phase]);
 
+  useEffect(() => {
+    fetch("/api/auth/me")
+      .then((r) => r.ok ? r.json() : null)
+      .then((d) => { if (d?.user) setUser(d.user); })
+      .catch(() => {});
+  }, []);
+
   async function handleReady(lat: number, lng: number) {
     setMyLocation({ lat, lng });
     await join(sessionId, lat, lng);
     setPhase("live");
   }
 
+  async function handleLogout() {
+    await fetch("/api/auth/logout", { method: "POST" });
+    window.location.href = "/login";
+  }
+
   if (phase === "gate") {
-    return <EntryGate onReady={handleReady} />;
+    return (
+      <>
+        {user && (
+          <div className="absolute right-4 top-4 z-50 flex items-center gap-3">
+            <span className="text-sm text-zinc-400">{user.name}</span>
+            <button
+              onClick={handleLogout}
+              className="rounded-full bg-zinc-800 px-3 py-1 text-xs text-zinc-300 hover:bg-zinc-700"
+            >
+              Logout
+            </button>
+          </div>
+        )}
+        <EntryGate onReady={handleReady} />
+      </>
+    );
   }
 
   const inChat = conn.kind === "connecting" || conn.kind === "connected";
 
   return (
     <main className="fixed inset-0 overflow-hidden">
+      {user && (
+        <div className="absolute right-4 top-4 z-50 flex items-center gap-3">
+          <span className="text-sm text-zinc-400">{user.name}</span>
+          <button
+            onClick={handleLogout}
+            className="rounded-full bg-zinc-800 px-3 py-1 text-xs text-zinc-300 hover:bg-zinc-700"
+          >
+            Logout
+          </button>
+        </div>
+      )}
       <WorldMap
         peers={peers}
         me={myLocation}
@@ -344,7 +396,7 @@ export default function Home() {
 
       {conn.kind === "incoming" && (
         <ConnectionPrompt
-          title="A stranger wants to connect"
+          title={`${peerName} wants to connect`}
           acceptLabel="Accept"
           declineLabel="Decline"
           onAccept={acceptIncoming}
@@ -357,6 +409,7 @@ export default function Home() {
           messages={messages}
           connected={conn.kind === "connected"}
           videoBusy={video !== "none"}
+          peerName={peerName}
           onSend={(text) => {
             peerRef.current?.sendChat(text);
             addMessage(true, text);
@@ -375,7 +428,7 @@ export default function Home() {
       {video === "incoming" && (
         <ConnectionPrompt
           title="Start video call?"
-          subtitle="The stranger wants to turn on video."
+          subtitle={`${peerName} wants to turn on video.`}
           acceptLabel="Accept"
           declineLabel="Decline"
           onAccept={acceptVideo}
