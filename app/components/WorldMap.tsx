@@ -105,7 +105,11 @@ export default function WorldMap({
         const el = document.createElement("div");
         el.className = "pulse-me";
         el.title = "You are here";
-        el.innerHTML = `<span class="pulse-me-label">Me</span>📍`;
+        const label = document.createElement("span");
+        label.className = "pulse-me-label";
+        label.textContent = "Me";
+        el.appendChild(label);
+        el.appendChild(document.createTextNode("📍"));
         meMarkerRef.current = new mapboxgl.Marker({ element: el, anchor: "bottom" })
           .setLngLat([me.lng, me.lat])
           .addTo(map);
